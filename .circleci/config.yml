@@ -102,9 +102,9 @@ jobs:
       - run:
           name: Run front-end Test
           command: |
-            #cd frontend
-            #npm i
-            #npm run test
+            cd frontend
+            npm i
+            npm run test
                 
   test-backend:
     docker:
