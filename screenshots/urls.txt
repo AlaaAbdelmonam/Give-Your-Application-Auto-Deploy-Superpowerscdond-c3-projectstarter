@@ -4,6 +4,7 @@ URL 02    - https://d2688ofju0i7kt.cloudfront.net/#/employees
 
 URL 03    - https://d2688ofju0i7kt.cloudfront.net
 
+URL 04    - http://ec2-100-26-49-255.compute-1.amazonaws.com:9090/
 
 
 
