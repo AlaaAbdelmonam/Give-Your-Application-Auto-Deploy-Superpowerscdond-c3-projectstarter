@@ -470,23 +470,22 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Get old stack workflow id and Cleanup
-          command: |           
-            export OldWorkflowID=$(curl --insecure https://kvdb.io/${KVDB_BUCKET_ID}/old_workflow_id)
-            export STACKS=($(aws --region us-east-1 cloudformation list-stacks --query "StackSummaries[*].StackName" --stack-status-filter CREATE_COMPLETE --no-paginate --output text))
-            echo OldWorkflowID: "${OldWorkflowID}"
-            echo CIRCLE_WORKFLOW_ID "$CIRCLE_WORKFLOW_ID"
-            echo Stack names: "${STACKS[@]}"
-            if [[ ${STACKS[@]} =~ "${OldWorkflowID}" ]]
+          name: Remove old stacks and files
+          command: |
+            OldWorkflowID=$(curl -H "token: ecdfc255-81e1-4056-9efa-2d7fa10812e1" --request GET https://api.memstash.io/values/workflowid)
+            CurrentWorkflowID=${CIRCLE_WORKFLOW_ID:0:7}
+            if [[ $OldWorkflowID == "" ]]
             then
-              aws --region us-east-1 s3 rm "s3://udapeople-${OldWorkflowID}" --recursive
-              aws --region us-east-1 cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
-              aws --region us-east-1 cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
-              echo "=======================Delete Confirmed========================"
+            echo "No workflow id found"
             else
-              echo "=======================Didn't delete========================"            
+            if [[ "$CurrentWorkflowID" != "$OldWorkflowID" ]]
+            then
+              echo "$OldWorkflowID!=$CurrentWorkflowID => will delete old version"
+              aws s3 rm "s3://udapeople-${OldWorkflowID}" --recursive
+              aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
+              aws cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
             fi
-            
+            fi
 workflows:
   default:
     jobs:
@@ -504,15 +503,17 @@ workflows:
           requires: [test-frontend, test-backend, scan-frontend, scan-backend]
           filters:
             branches:
-              only: [master]
+              only: [main]
       - configure-infrastructure:
           requires: [deploy-infrastructure]
       - run-migrations:
-           requires: [configure-infrastructure]
-      - deploy-frontend:
-           requires: [run-migrations]
+          requires: [configure-infrastructure]
       - deploy-backend:
-          requires: [run-migrations]
+          requires:
+            - run-migrations
+      - deploy-frontend:
+          requires:
+            - run-migrations
       - smoke-test:
           requires: [deploy-backend, deploy-frontend]
       - cloudfront-update:
